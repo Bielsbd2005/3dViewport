@@ -1,9 +1,16 @@
---[[
-	// **READ-ONLY**
-	// FileName: ViewPort3d
-	// Written by: Bielsbd
-  // 10/7/24
---]]
+-- **READ-ONLY**
+-- FileName: ViewPort3d
+-- Written by: Bielsbd
+-- 10/7/24
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HoverSound = ReplicatedStorage.SoundFolder.Hover
+local ClickSound = ReplicatedStorage.SoundFolder.Click
+local ButtonClickedEvent = ReplicatedStorage.GUIRemote
+local RunService = game:GetService("RunService")
+
+local ViewPortFrame = script.Parent.MainFrame.ScrollingFrame.Content
+local template = ReplicatedStorage.Template
 
 local function ApplyHoverEffect(TextButton)
 	TextButton.MouseEnter:Connect(function()
@@ -18,47 +25,62 @@ local function ApplyHoverEffect(TextButton)
 	end)
 end
 
-local function Create(carPartName, vehicleType)
-	local models = ReplicatedStorage.Folder:GetChildren()
+local function setupViewportContent(content, icon, camera)
+	content.Parent = icon.ViewportFrame
 
-	for index, model in pairs(models) do
-		-- Verify if a button with the same name already exists
-		if not ViewPortFrame:FindFirstChild(model.Name) then
+	local cf, size
+	if content:IsA("Model") then
+		cf, size = content:GetBoundingBox()
+	elseif content:IsA("MeshPart") or content:IsA("Part") then
+		cf = content.CFrame
+		size = content.Size
+	else
+		warn("El tipo de asset no es compatible:", content.ClassName)
+		return
+	end
+
+	local distance = (size.Magnitude / 2) / math.tan(math.rad(camera.FieldOfView / 2))
+	camera.CFrame = CFrame.new(cf.Position + Vector3.new(0, 0, distance), cf.Position)
+
+	local theta = 0
+	local renderConnection
+	renderConnection = RunService.RenderStepped:Connect(function(dt)
+		if not icon.Parent then
+			renderConnection:Disconnect()
+			return
+		end
+		theta = theta + math.rad(20 * dt)
+		camera.CFrame = CFrame.new(cf.Position) * CFrame.fromEulerAnglesYXZ(0, theta, 0) * CFrame.new(0, 0, distance)
+	end)
+end
+
+local function Create()
+	local existingIcons = {}
+	for _, child in pairs(ViewPortFrame:GetChildren()) do
+		existingIcons[child.Name] = true
+	end
+
+	for _, model in pairs(ReplicatedStorage.Folder:GetChildren()) do
+		if not existingIcons[model.Name] then
 			local icon = template:Clone()
-			model = model:Clone()
+			icon.Name = model.Name
+			icon.Parent = ViewPortFrame
 
+			local content = model:Clone()
 			local camera = Instance.new("Camera")
 			camera.FieldOfView = 70
 			camera.Parent = icon.ViewportFrame
-
-			model.Parent = icon.ViewportFrame
 			icon.ViewportFrame.CurrentCamera = camera
-			icon.Parent = ViewPortFrame
-			icon.Name = model.Name
 
-			local vpfModel = ViewportModel.new(icon.ViewportFrame, camera)
-			local cf, size = model:GetBoundingBox()
+			setupViewportContent(content, icon, camera)
+			ApplyHoverEffect(icon)
 
-			vpfModel:SetModel(model)
-
-			local theta = 0
-			local orientation = CFrame.new()
-			local distance = vpfModel:GetFitDistance(cf.Position)
-
-			game:GetService("RunService").RenderStepped:Connect(function(dt)
-				theta = theta + math.rad(20 * dt)
-				orientation = CFrame.fromEulerAnglesYXZ(math.rad(-20), theta, 0)
-				camera.CFrame = CFrame.new(cf.Position) * orientation * CFrame.new(0, 0, distance)
-			end)
-
-			-- Connect the button event to the RemoteEvent
 			icon.MouseButton1Click:Connect(function()
-				ButtonClickedEvent:FireServer(model.Name, carPartName)
+				ButtonClickedEvent:FireServer(model.Name)
 				print(model.Name .. " button was clicked")
 			end)
-
-			-- Apply hover and click effects
-			ApplyHoverEffect(icon)
 		end
 	end
 end
+
+Create()
