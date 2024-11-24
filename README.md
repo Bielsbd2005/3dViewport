@@ -1,6 +1,6 @@
 # ViewPort3DModule
 
-Un módulo de Roblox para gestionar vistas previas en 3D mediante `ViewportFrame`. Este módulo permite crear íconos dinámicos que muestran modelos 3D giratorios, organizados en un contenedor de UI.
+El modulo sirve para gestionar vistas previas en 3D mediante `ViewportFrame`. 
 
 ---
 
