@@ -1,30 +1,17 @@
--- **READ-ONLY**
--- FileName: ViewPort3d
+-- FileName: ViewPort3DModule
 -- Written by: Bielsbd
 -- 10/7/24
 
+local ViewPort3DModule = {}
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local HoverSound = ReplicatedStorage.SoundFolder.Hover
-local ClickSound = ReplicatedStorage.SoundFolder.Click
-local ButtonClickedEvent = ReplicatedStorage.GUIRemote
 local RunService = game:GetService("RunService")
 
-local ViewPortFrame = script.Parent.MainFrame.ScrollingFrame.Content
-local template = ReplicatedStorage.Template
+-- Private Variables
+local ViewPortFrame
+local Template
 
-local function ApplyHoverEffect(TextButton)
-	TextButton.MouseEnter:Connect(function()
-		TextButton.UIStroke.Enabled = true
-		HoverSound:Play()
-	end)
-	TextButton.MouseLeave:Connect(function()
-		TextButton.UIStroke.Enabled = false
-	end)
-	TextButton.MouseButton1Click:Connect(function()
-		ClickSound:Play()
-	end)
-end
-
+-- Private Functions
 local function setupViewportContent(content, icon, camera)
 	content.Parent = icon.ViewportFrame
 
@@ -54,15 +41,25 @@ local function setupViewportContent(content, icon, camera)
 	end)
 end
 
-local function Create()
+-- Public Functions
+function ViewPort3DModule.Setup(viewportFrame, template)
+	ViewPortFrame = viewportFrame
+	Template = template
+end
+
+function ViewPort3DModule.Create(folder)
+	if not ViewPortFrame or not Template then
+		error("ViewPort3DModule.Setup must be called before Create.")
+	end
+
 	local existingIcons = {}
 	for _, child in pairs(ViewPortFrame:GetChildren()) do
 		existingIcons[child.Name] = true
 	end
 
-	for _, model in pairs(ReplicatedStorage.Folder:GetChildren()) do
+	for _, model in pairs(folder:GetChildren()) do
 		if not existingIcons[model.Name] then
-			local icon = template:Clone()
+			local icon = Template:Clone()
 			icon.Name = model.Name
 			icon.Parent = ViewPortFrame
 
@@ -73,14 +70,12 @@ local function Create()
 			icon.ViewportFrame.CurrentCamera = camera
 
 			setupViewportContent(content, icon, camera)
-			ApplyHoverEffect(icon)
 
 			icon.MouseButton1Click:Connect(function()
-				ButtonClickedEvent:FireServer(model.Name)
 				print(model.Name .. " button was clicked")
 			end)
 		end
 	end
 end
 
-Create()
+return ViewPort3DModule
